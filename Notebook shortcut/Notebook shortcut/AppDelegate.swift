@@ -12,13 +12,29 @@ import SwiftUI
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    
+
     @IBOutlet weak var menu: NSMenu!
-    
+    // cmd for starting notebook
     let task = Process()
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-
+        
+        if !UserDefaults.standard.bool(forKey: "isFirstLaunch") {
+            
+//            NSLog("is first launch")
+            
+            UserDefaults.standard.set(true, forKey: "isFirstLaunch")
+            //get user's home directory. eg. "HOME": "/Users/colin"
+//            let environment =  ProcessInfo.processInfo.environment
+            UserDefaults.standard.set(ProcessInfo.processInfo.environment["HOME"], forKey: "HOME")
+            UserDefaults.standard.set(["/Users/colin/Library/Python/2.7/bin/jupyter-notebook"], forKey: "NotebookPath")
+        }
+//        else{
+//            NSLog("not first launch")
+//            print(UserDefaults.standard.string(forKey: "HOME") as Any)
+//            print(UserDefaults.standard.stringArray(forKey: "NotebookPath") as Any)
+//        }
+        
         if let button = statusItem.button {
             button.image = NSImage(named: "StatusIcon")
             button.action = #selector(mouseClickHandler)
@@ -27,9 +43,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         menu.delegate = self
 
+        // run notebook in thread
+//        StartNotebook(self.task)
         DispatchQueue.global(qos: .utility).async{
+            
             self.StartNotebook(self.task)
+//            NSLog("nb ends")
+            // notebook thread ends, end this app
+            DispatchQueue.main.async {
+                NSApplication.shared.terminate(self)
+            }
         }
+
         
     }
     
@@ -37,14 +62,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let event = NSApp.currentEvent {
             switch event.type {
                 case .rightMouseUp:
-                    // 使用警告窗口示意左键单击
-//                    let alert = NSAlert()
-//                    alert.messageText = "鼠标事件"
-//                    alert.informativeText = "右键单击"
-//                    alert.addButton(withTitle: "关闭")
-//                    alert.window.titlebarAppearsTransparent = true
-//                    alert.runModal()
-//                    关闭程序
                     NSApplication.shared.terminate(self)
                 default:
                     statusItem.menu = menu
@@ -54,14 +71,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @IBAction func OpenNotebook(_ sender: NSMenuItem) {
-//        StartNotebook()
         //open safair
         let url = URL(string: "http://localhost:8888/tree")!
         if NSWorkspace.shared.open(url) {
             NSLog("log: %@", "default browser was successfully opened")
-
         }
-        
     }
     
     func StartNotebook(_ task: Process) {
@@ -73,35 +87,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 //        task.environment = environment
         
         task.launchPath = "/usr/bin/env/"
-//        task.arguments = ["which", "pip"]
-//        task.arguments = ["pwd"]
-        task.arguments = ["/Users/colin/Library/Python/2.7/bin/jupyter-notebook"]
-        task.currentDirectoryPath = "/Users/colin"
+
+//        task.arguments = ["/Users/colin/Library/Python/2.7/bin/jupyter-notebook"]
+//        task.currentDirectoryPath = "/Users/colin"
         
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        let errpipe = Pipe()
-        task.standardError = errpipe
+        task.arguments = UserDefaults.standard.stringArray(forKey: "NotebookPath")
+        task.currentDirectoryPath = UserDefaults.standard.string(forKey: "HOME") ?? "/Users"
         
+//        let infoPipe = Pipe()
+//        task.standardOutput = infoPipe
+//        let errpipe = Pipe()
+//        task.standardError = errpipe
+
         task.launch()
-        
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output: String = String(data: data, encoding: String.Encoding.utf8)!
-        NSLog("log: %@", output)
-        
-        let errdata = errpipe.fileHandleForReading.availableData
-        let errString = String(data: errdata, encoding: String.Encoding.utf8) ?? ""
-        NSLog("错误: %@", errString)
-        
-        
-        pipe.fileHandleForReading.closeFile()
-        
-        print("DEBUG 24: run_shell finish.")
-        print(Int(task.terminationStatus))
-        
-//        task.waitUntilExit()
 
+//        let data = infoPipe.fileHandleForReading.readDataToEndOfFile()
+//        let output: String = String(data: data, encoding: String.Encoding.utf8)!
+//        NSLog("log: %@", output)
+//
+//        let errdata = errpipe.fileHandleForReading.availableData
+//        let errString = String(data: errdata, encoding: String.Encoding.utf8) ?? ""
+//        NSLog("错误: %@", errString)
+        
+        
+//        infoPipe.fileHandleForReading.closeFile()
+//        errpipe.fileHandleForReading.closeFile()
 
+//        NSLog("DEBUG 24: run_shell finish.")
+//        print(Int(task.terminationStatus))
+
+        task.waitUntilExit()
     }
     
     @IBAction func quitApp(_ sender: NSMenuItem) {
@@ -121,12 +136,5 @@ extension AppDelegate: NSMenuDelegate {
     // 为了保证按钮的单击事件设置有效，menu要去除
     func menuDidClose(_ menu: NSMenu) {
         self.statusItem.menu = nil
-    }
-}
-
-
-struct AppDelegate_Previews: PreviewProvider {
-    static var previews: some View {
-        /*@START_MENU_TOKEN@*/Text("Hello, World!")/*@END_MENU_TOKEN@*/
     }
 }
