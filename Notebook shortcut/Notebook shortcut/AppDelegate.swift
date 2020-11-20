@@ -73,9 +73,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBAction func OpenNotebook(_ sender: NSMenuItem) {
         //open safair
         let url = URL(string: "http://localhost:8888/tree")!
-        if NSWorkspace.shared.open(url) {
-            NSLog("log: %@", "default browser was successfully opened")
-        }
+        NSWorkspace.shared.open(url)
+//        if NSWorkspace.shared.open(url) {
+//            NSLog("log: %@", "default browser was successfully opened")
+//        }
     }
     
     func StartNotebook(_ task: Process) {
